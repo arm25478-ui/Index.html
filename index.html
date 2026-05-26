@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flashcard + Quiz Exit Exam</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Sarabun', 'Helvetica', sans-serif; }
+body {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+  color: #333;
+}
+.container { max-width: 900px; margin: 0 auto; }
+header { text-align: center; color: white; margin-bottom: 20px; }
+header h1 { font-size: 26px; margin-bottom: 6px; font-weight: 700; }
+header p { font-size: 13px; opacity: 0.9; }
+
+/* Mode tabs */
+.mode-tabs {
+  display: flex;
+  background: rgba(255,255,255,0.95);
+  border-radius: 12px;
+  padding: 6px;
+  margin-bottom: 16px;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.mode-tab {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #666;
+  transition: all 0.2s;
+}
+.mode-tab.active {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  box-shadow: 0 2px 8px rgba(102,126,234,0.4);
+}
+
+/* Stats bar */
+.stats {
+  background: rgba(255,255,255,0.95);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.stat { text-align: center; flex: 1; min-width: 70px; }
+.stat-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: #667eea;
+  display: block;
+}
+.stat-label {
+  font-size: 10px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Category filter */
+.categories {
+  background: rgba(255,255,255,0.95);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.cat-title {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.cat-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cat-btn {
+  padding: 5px 11px;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 14px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  color: #555;
+}
+.cat-btn:hover { border-color: #667eea; color: #667eea; }
+.cat-btn.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+/* Progress */
+.progress {
+  background: rgba(255,255,255,0.3);
+  border-radius: 10px;
+  height: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.progress-fill {
+  background: linear-gradient(90deg, #10b981, #059669);
+  height: 100%;
+  transition: width 0.3s;
+  width: 0%;
+}
+
+/* ====== FLASHCARD MODE ====== */
+.flashcard-wrapper { perspective: 1500px; margin-bottom: 20px; }
+.flashcard {
+  position: relative;
+  width: 100%;
+  min-height: 340px;
+  transform-style: preserve-3d;
+  transition: transform 0.6s;
+  cursor: pointer;
+}
+.flashcard.flipped { transform: rotateY(180deg); }
+.card-face {
+  position: absolute;
+  width: 100%;
+  min-height: 340px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.card-front { background: white; }
+.card-back {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  transform: rotateY(180deg);
+  overflow-y: auto;
+  justify-content: flex-start;
+}
+.card-tag {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: #667eea;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.card-num {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-size: 13px;
+  color: #999;
+}
+.question {
+  font-size: 20px;
+  line-height: 1.5;
+  text-align: center;
+  font-weight: 500;
+  color: #333;
+  padding: 20px;
+}
+.answer {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #2c3e50;
+  padding-top: 32px;
+}
+.answer h3 { font-size: 18px; color: #5a4ba8; margin-bottom: 8px; margin-top: 12px; }
+.answer ul { padding-left: 20px; margin: 8px 0; }
+.answer li { margin-bottom: 6px; }
+.answer strong { color: #5a4ba8; }
+.answer .formula {
+  background: rgba(102,126,234,0.1);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  display: inline-block;
+  margin: 4px 0;
+  font-size: 15px;
+}
+.flip-hint {
+  margin-top: 16px;
+  font-size: 13px;
+  color: #999;
+  text-align: center;
+}
+
+/* ====== QUIZ MODE ====== */
+.quiz-card {
+  background: white;
+  border-radius: 16px;
+  padding: 28px 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  margin-bottom: 16px;
+  min-height: 400px;
+  position: relative;
+}
+.quiz-tag {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: #667eea;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.quiz-num {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-size: 13px;
+  color: #999;
+}
+.quiz-question {
+  font-size: 18px;
+  font-weight: 500;
+  margin-top: 36px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+  color: #2c3e50;
+}
+.choices { display: flex; flex-direction: column; gap: 10px; }
+.choice {
+  padding: 14px 18px;
+  border: 2px solid #e0e0e0;
+  background: #f9fafb;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 15px;
+  font-family: inherit;
+  text-align: left;
+  transition: all 0.2s;
+  color: #333;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.choice:hover:not(.disabled) {
+  border-color: #667eea;
+  background: #f0f4ff;
+}
+.choice-letter {
+  background: #e5e7eb;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+  color: #555;
+}
+.choice.correct {
+  border-color: #10b981;
+  background: #d1fae5;
+  color: #065f46;
+}
+.choice.correct .choice-letter {
+  background: #10b981;
+  color: white;
+}
+.choice.wrong {
+  border-color: #ef4444;
+  background: #fee2e2;
+  color: #991b1b;
+}
+.choice.wrong .choice-letter {
+  background: #ef4444;
+  color: white;
+}
+.choice.disabled { cursor: default; }
+
+.explanation {
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #fff7ed, #fef3c7);
+  border-left: 4px solid #f59e0b;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  display: none;
+  color: #333;
+}
+.explanation.show { display: block; }
+.explanation strong { color: #92400e; }
+.explanation .formula {
+  background: rgba(245,158,11,0.15);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+}
+
+/* Score display */
+.score-bar {
+  background: rgba(255,255,255,0.95);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.score-item { text-align: center; flex: 1; }
+.score-num { font-size: 20px; font-weight: 700; display: block; }
+.score-num.correct { color: #10b981; }
+.score-num.wrong { color: #ef4444; }
+.score-num.total { color: #667eea; }
+.score-label { font-size: 11px; color: #666; text-transform: uppercase; }
+
+/* Results screen */
+.results {
+  background: white;
+  border-radius: 16px;
+  padding: 32px 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  text-align: center;
+}
+.results-emoji { font-size: 64px; margin-bottom: 12px; }
+.results-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #333;
+}
+.results-score {
+  font-size: 48px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.results-detail {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 20px;
+}
+.results-categories {
+  text-align: left;
+  margin: 20px 0;
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 14px;
+}
+.results-cat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 14px;
+  border-bottom: 1px solid #eee;
+}
+.results-cat-row:last-child { border-bottom: none; }
+.results-cat-row strong { color: #555; }
+.results-cat-bar {
+  flex: 0 0 80px;
+  background: #e5e7eb;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-left: 10px;
+  margin-top: 7px;
+}
+.results-cat-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #059669);
+  border-radius: 3px;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  transition: all 0.2s;
+  color: white;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.btn-prev, .btn-next { background: #8e9aaf; }
+.btn-prev:hover, .btn-next:hover { background: #6c7787; }
+.btn-flip { background: #667eea; }
+.btn-flip:hover { background: #5568d3; }
+.btn-shuffle { background: #f59e0b; }
+.btn-shuffle:hover { background: #d97706; }
+.btn-primary {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #5568d3, #6a3f95);
+}
+.btn-secondary { background: #6b7280; }
+.btn-secondary:hover { background: #4b5563; }
+
+/* Grade buttons (flashcard) */
+.grade-buttons {
+  display: none;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.grade-buttons.show { display: flex; }
+.grade-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  color: white;
+}
+.grade-known { background: #10b981; }
+.grade-known:hover { background: #059669; }
+.grade-review { background: #f59e0b; }
+.grade-review:hover { background: #d97706; }
+.grade-unknown { background: #ef4444; }
+.grade-unknown:hover { background: #dc2626; }
+
+.hidden { display: none !important; }
+
+@media (max-width: 600px) {
+  .question { font-size: 17px; }
+  .answer, .quiz-question { font-size: 14px; }
+  .card-face, .quiz-card { padding: 24px 20px; }
+  .btn { font-size: 13px; padding: 12px; }
+  .choice { font-size: 14px; padding: 12px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🎓 Exit Exam · ผังเมือง</h1>
+    <p>Flashcard + Quiz · คณะสถาปัตย์ มธ.</p>
+  </header>
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="switchMode('flashcard')">📇 Flashcard</button>
+    <button class="mode-tab" onclick="switchMode('quiz')">📝 Quiz</button>
+  </div>
+
+  <div class="categories">
+    <div class="cat-title">เลือกหมวด</div>
+    <div class="cat-buttons" id="catButtons"></div>
+  </div>
+
+  <!-- ============ FLASHCARD MODE ============ -->
+  <div id="flashcardMode">
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-num" id="fcTotal">0</span>
+        <span class="stat-label">ทั้งหมด</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="fcCurrent">0</span>
+        <span class="stat-label">ปัจจุบัน</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="fcKnown">0</span>
+        <span class="stat-label">รู้แล้ว</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="fcReview">0</span>
+        <span class="stat-label">ทบทวน</span>
+      </div>
+    </div>
+
+    <div class="progress">
+      <div class="progress-fill" id="fcProgress"></div>
+    </div>
+
+    <div class="flashcard-wrapper">
+      <div class="flashcard" id="flashcard" onclick="flipCard()">
+        <div class="card-face card-front">
+          <span class="card-tag" id="fcTag">หมวด</span>
+          <span class="card-num" id="fcNum">1 / 1</span>
+          <div class="question" id="fcQuestion">กำลังโหลด...</div>
+          <div class="flip-hint">👆 แตะการ์ดเพื่อดูคำตอบ</div>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-tag" id="fcTagBack">หมวด</span>
+          <span class="card-num" id="fcNumBack">1 / 1</span>
+          <div class="answer" id="fcAnswer"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grade-buttons" id="gradeButtons">
+      <button class="grade-btn grade-unknown" onclick="gradeCard('unknown')">😰 ไม่รู้</button>
+      <button class="grade-btn grade-review" onclick="gradeCard('review')">🤔 ทบทวน</button>
+      <button class="grade-btn grade-known" onclick="gradeCard('known')">😎 รู้แล้ว</button>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-prev" onclick="prevCard()">← ก่อนหน้า</button>
+      <button class="btn btn-flip" onclick="flipCard()">🔄 พลิก</button>
+      <button class="btn btn-next" onclick="nextCard()">ถัดไป →</button>
+      <button class="btn btn-shuffle" onclick="shuffleCards()">🎲 สลับ</button>
+    </div>
+  </div>
+
+  <!-- ============ QUIZ MODE ============ -->
+  <div id="quizMode" class="hidden">
+
+    <!-- Start screen -->
+    <div id="quizStart">
+      <div class="quiz-card" style="text-align:center; padding-top:40px;">
+        <div style="font-size:60px; margin-bottom:12px;">📝</div>
+        <h2 style="font-size:24px; margin-bottom:12px; color:#333;">เริ่มทำ Quiz</h2>
+        <p style="color:#666; margin-bottom:24px; font-size:15px; line-height:1.5;">
+          ทำข้อสอบแบบเลือกตอบ พร้อมเฉลยและคำอธิบาย<br>
+          เลือกหมวดด้านบนเพื่อจำกัดข้อสอบ
+        </p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:20px;">
+          <button class="btn btn-primary" onclick="startQuiz(10)" style="flex:0 0 auto; min-width:140px;">⚡ Quick (10 ข้อ)</button>
+          <button class="btn btn-primary" onclick="startQuiz(20)" style="flex:0 0 auto; min-width:140px;">🎯 Standard (20 ข้อ)</button>
+          <button class="btn btn-primary" onclick="startQuiz('all')" style="flex:0 0 auto; min-width:140px;">🔥 ทั้งหมด</button>
+        </div>
+        <p style="color:#999; font-size:13px;">💡 ระบบสลับลำดับและตัวเลือกอัตโนมัติ</p>
+      </div>
+    </div>
+
+    <!-- Quiz playing -->
+    <div id="quizPlay" class="hidden">
+      <div class="score-bar">
+        <div class="score-item">
+          <span class="score-num total" id="qzNum">1/10</span>
+          <span class="score-label">ข้อ</span>
+        </div>
+        <div class="score-item">
+          <span class="score-num correct" id="qzCorrect">0</span>
+          <span class="score-label">ถูก</span>
+        </div>
+        <div class="score-item">
+          <span class="score-num wrong" id="qzWrong">0</span>
+          <span class="score-label">ผิด</span>
+        </div>
+        <div class="score-item">
+          <span class="score-num" id="qzPercent" style="color:#667eea;">0%</span>
+          <span class="score-label">คะแนน</span>
+        </div>
+      </div>
+
+      <div class="progress">
+        <div class="progress-fill" id="qzProgress"></div>
+      </div>
+
+      <div class="quiz-card">
+        <span class="quiz-tag" id="qzTag">หมวด</span>
+        <span class="quiz-num" id="qzNumDisplay">1 / 10</span>
+        <div class="quiz-question" id="qzQuestion"></div>
+        <div class="choices" id="qzChoices"></div>
+        <div class="explanation" id="qzExplanation"></div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-secondary" onclick="quitQuiz()">⏹ ออก</button>
+        <button class="btn btn-primary" id="qzNextBtn" onclick="nextQuestion()" disabled style="opacity:0.5;">ถัดไป →</button>
+      </div>
+    </div>
+
+    <!-- Results screen -->
+    <div id="quizResults" class="hidden">
+      <div class="results">
+        <div class="results-emoji" id="resEmoji">🎉</div>
+        <div class="results-title" id="resTitle">เก่งมาก!</div>
+        <div class="results-score" id="resScore">0%</div>
+        <div class="results-detail" id="resDetail">0 ถูก จากทั้งหมด 0 ข้อ</div>
+
+        <div class="results-categories" id="resCategories"></div>
+
+        <div class="controls">
+          <button class="btn btn-secondary" onclick="goBackToStart()">📝 ทำใหม่</button>
+          <button class="btn btn-primary" onclick="reviewWrongAnswers()">🔍 ดูข้อผิด</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Review wrong answers -->
+    <div id="quizReview" class="hidden">
+      <div class="quiz-card">
+        <h3 style="margin-bottom:16px; color:#333;">🔍 ทบทวนข้อผิด</h3>
+        <div id="reviewContent"></div>
+        <button class="btn btn-primary" onclick="goBackToStart()" style="margin-top:16px; width:100%;">📝 กลับไปทำใหม่</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============== DATA ==============
+const allCards = [
+  // Each card has: cat, q (question), a (full answer for flashcard),
+  // choices (array of 4), correct (index 0-3), explanation
+  {cat:"กฎหมาย", q:"พ.ร.บ. การผังเมืองฉบับปัจจุบันคือฉบับ พ.ศ. ใด?", a:"<strong>พ.ร.บ. การผังเมือง พ.ศ. 2562</strong><br>ประกาศใช้ 24 พฤษภาคม 2562",
+    choices:["พ.ศ. 2518", "พ.ศ. 2535", "พ.ศ. 2558", "พ.ศ. 2562"], correct:3,
+    explanation:"พ.ร.บ. การผังเมือง พ.ศ. 2562 ประกาศใช้ 24 พฤษภาคม 2562 แทนที่ พ.ร.บ. ปี 2518"},
+
+  {cat:"กฎหมาย", q:"ผังประเภทใดมีผลบังคับใช้โดยตรงกับการพัฒนาที่ดินรายแปลง?", a:"<strong>ผังกำหนดการใช้ประโยชน์ที่ดิน</strong> — ระดับปฏิบัติ บังคับใช้กับการพัฒนาที่ดิน",
+    choices:["ผังนโยบายระดับประเทศ", "ผังนโยบายระดับภาค", "ผังกำหนดการใช้ประโยชน์ที่ดิน", "ผังนโยบายระดับจังหวัด"], correct:2,
+    explanation:"ผังนโยบายเป็นกรอบกว้าง ไม่บังคับโดยตรง — ผังกำหนดการใช้ประโยชน์ที่ดิน (รวมผังเมืองรวม/เฉพาะ) ใช้บังคับจริง"},
+
+  {cat:"กฎหมาย", q:"กฎหมายใดออกโดยฝ่ายบริหารโดยไม่ผ่านรัฐสภา?", a:"พระราชกฤษฎีกา",
+    choices:["พระราชบัญญัติ", "ประมวลกฎหมาย", "พระราชกำหนด", "พระราชกฤษฎีกา"], correct:3,
+    explanation:"พระราชกฤษฎีกา ฝ่ายบริหารจัดทำ ทูลเกล้าฯ พระมหากษัตริย์ลงพระปรมาภิไธย ไม่ผ่านรัฐสภา"},
+
+  {cat:"กฎหมาย", q:"ขั้นตอนการวางผังเมืองรวมตาม พ.ร.บ. 2562 มีกี่ขั้นตอนหลัก?", a:"8 ขั้นตอนหลัก (ลดจากเดิม 18)",
+    choices:["5 ขั้น", "8 ขั้น", "12 ขั้น", "18 ขั้น"], correct:1,
+    explanation:"พ.ร.บ. 2562 ลดเหลือ 8 ขั้นตอนหลัก จาก พ.ร.บ. เก่าที่มี 18 ขั้น"},
+
+  {cat:"กฎหมาย", q:"'ที่อุปกรณ์ (Accessory Space)' หมายถึงอะไร?", a:"ที่ดินของเอกชนที่ผังเมืองเฉพาะจัดให้เป็นที่เว้นว่างหรือสาธารณประโยชน์",
+    choices:["พื้นที่จอดรถในอาคาร", "ที่ดินเอกชนที่จัดให้เป็นที่เว้นว่าง/สาธารณประโยชน์", "ที่ดินของรัฐที่ให้เอกชนใช้", "พื้นที่ใต้ดินของอาคาร"], correct:1,
+    explanation:"เช่น ทางเท้า ทางเดิน ตรอกหลัง ทางน้ำ ท่อระบายน้ำ — เป็นที่ดินเอกชนแต่จัดเพื่อสาธารณประโยชน์"},
+
+  {cat:"กฎหมาย", q:"อะไรเป็นลักษณะเด่นของกฎหมายผังเมือง?", a:"รัฐกระทำฝ่ายเดียว เน้นประโยชน์มหาชน กระทบสิทธิเสรีภาพ",
+    choices:["ออกโดยฝ่ายตุลาการ", "รัฐกระทำฝ่ายเดียว เน้นประโยชน์มหาชน", "ออกโดยเอกชน", "บังคับใช้กับรัฐเท่านั้น"], correct:1,
+    explanation:"กฎหมายผังเมืองรัฐกระทำฝ่ายเดียว เพื่อประโยชน์มหาชน — กระทบสิทธิการเลือกที่อยู่ การใช้ประโยชน์อสังหาฯ และการประกอบอาชีพ"},
+
+  // ===== Zoning / FAR =====
+  {cat:"Zoning/FAR", q:"FAR (Floor Area Ratio) คำนวณอย่างไร?", a:"FAR = พื้นที่อาคารทั้งหมด ÷ พื้นที่ดิน",
+    choices:["พื้นที่อาคารชั้นล่าง ÷ พื้นที่ดิน", "พื้นที่ว่าง ÷ พื้นที่อาคาร", "พื้นที่อาคารทั้งหมด ÷ พื้นที่ดิน", "พื้นที่ดิน ÷ จำนวนคน"], correct:2,
+    explanation:"FAR = พื้นที่อาคารรวมทุกชั้น ÷ พื้นที่ดิน — เช่น FAR 3:1 หมายถึงสร้างได้ 3 เท่าของพื้นที่ดิน"},
+
+  {cat:"Zoning/FAR", q:"BCR (Building Coverage Ratio) คำนวณอย่างไร?", a:"BCR = พื้นที่อาคารชั้นล่าง ÷ พื้นที่ดิน",
+    choices:["พื้นที่อาคารทั้งหมด ÷ พื้นที่ดิน", "พื้นที่อาคารชั้นล่าง ÷ พื้นที่ดิน", "พื้นที่ว่าง ÷ พื้นที่ดิน", "พื้นที่ปลูกต้นไม้ ÷ พื้นที่ดิน"], correct:1,
+    explanation:"BCR วัดอัตราส่วนพื้นที่อาคารปกคลุมดิน (footprint) ต่อพื้นที่ดิน"},
+
+  {cat:"Zoning/FAR", q:"ที่ดิน 80 ตร.วา ใน Zone A (FAR 3:1) สร้างพื้นที่อาคารรวมได้สูงสุดเท่าไร?", a:"80 ตร.วา = 320 ตร.ม. × 3 = 960 ตร.ม.",
+    choices:["240 ตร.ม.", "480 ตร.ม.", "960 ตร.ม.", "1,200 ตร.ม."], correct:2,
+    explanation:"80 ตร.วา × 4 ตร.ม./ตร.วา = 320 ตร.ม. → 320 × 3 = 960 ตร.ม. (ยังเป็นอาคารขนาดเล็ก เพราะ < 1,000 ตร.ม.)"},
+
+  {cat:"Zoning/FAR", q:"อาคารขนาดใหญ่พิเศษมีพื้นที่เท่าไร?", a:"เกิน 10,000 ตร.ม.",
+    choices:["เกิน 500 ตร.ม.", "เกิน 1,000 ตร.ม.", "เกิน 5,000 ตร.ม.", "เกิน 10,000 ตร.ม."], correct:3,
+    explanation:"อาคารขนาดเล็ก <1,000 / ขนาดใหญ่ >1,000 / ขนาดใหญ่พิเศษ >10,000 ตร.ม."},
+
+  {cat:"Zoning/FAR", q:"สิ่งใดที่<strong>ไม่ได้</strong>รับ FAR Bonus ในกรุงเทพฯ?", a:"Impervious Surface (พื้นทึบน้ำ)",
+    choices:["Affordable Housing", "Roof Garden", "Park & Ride", "Impervious Surface"], correct:3,
+    explanation:"FAR Bonus ให้กับสิ่งที่เป็นประโยชน์สาธารณะ — Impervious Surface ทำให้น้ำท่วม ไม่ใช่สิ่งที่ส่งเสริม"},
+
+  {cat:"Zoning/FAR", q:"โซน 'ย.5' หมายถึงอะไร?", a:"ที่อยู่อาศัยหนาแน่นปานกลาง",
+    choices:["พาณิชยกรรมระดับ 5", "ที่อยู่อาศัย", "อุตสาหกรรมระดับ 5", "เกษตรกรรม"], correct:1,
+    explanation:"ย.1-10 คือที่อยู่อาศัย (Residential) — ย.1 หนาแน่นน้อย, ย.10 หนาแน่นมาก"},
+
+  {cat:"Zoning/FAR", q:"Downzoning หมายถึงอะไร?", a:"เปลี่ยนการใช้ประโยชน์ที่ดินจากความเข้มข้นสูงไปต่ำกว่า",
+    choices:["เพิ่มพื้นที่อาคารได้มากขึ้น", "ลดราคาที่ดิน", "เปลี่ยนการใช้ประโยชน์จากเข้มข้นสูงไปต่ำ", "ขยายเขตเมือง"], correct:2,
+    explanation:"Downzoning เช่น เปลี่ยน 'พาณิช' เป็น 'ที่อยู่อาศัย' — ลดความเข้มข้น มูลค่าที่ดินมักลด"},
+
+  // ===== จัดสรรที่ดิน =====
+  {cat:"จัดสรรที่ดิน", q:"ขนาดที่ดินขั้นต่ำของบ้านเดี่ยวตามข้อกำหนด กทม. 2550?", a:"กว้าง 12 ม. × เนื้อที่ 50 ตร.วา (ถ้ากว้างน้อยกว่า ต้องมีเนื้อที่ 60 ตร.วา)",
+    choices:["10 ม. × 45 ตร.วา", "12 ม. × 50 ตร.วา", "8 ม. × 35 ตร.วา", "15 ม. × 70 ตร.วา"], correct:1,
+    explanation:"บ้านเดี่ยว: กว้าง 12 ม. + เนื้อที่ 50 ตร.วา — ถ้าความกว้างไม่ถึง 12 ม. ต้องมีเนื้อที่ไม่น้อยกว่า 60 ตร.วา"},
+
+  {cat:"จัดสรรที่ดิน", q:"ขนาดที่ดินขั้นต่ำของบ้านแฝด?", a:"กว้าง 8 ม. × เนื้อที่ 35 ตร.วา",
+    choices:["6 ม. × 25 ตร.วา", "8 ม. × 35 ตร.วา", "10 ม. × 40 ตร.วา", "12 ม. × 50 ตร.วา"], correct:1,
+    explanation:"บ้านแฝด (Semi-detached): กว้างขั้นต่ำ 8 ม. เนื้อที่ขั้นต่ำ 35 ตร.วา"},
+
+  {cat:"จัดสรรที่ดิน", q:"ขนาดที่ดินขั้นต่ำของทาวน์เฮ้าส์/บ้านแถว?", a:"กว้าง 4 ม. × เนื้อที่ 16 ตร.วา",
+    choices:["4 ม. × 16 ตร.วา", "5 ม. × 20 ตร.วา", "6 ม. × 25 ตร.วา", "8 ม. × 35 ตร.วา"], correct:0,
+    explanation:"ทาวน์เฮ้าส์/บ้านแถว: กว้าง 4 ม. + เนื้อที่ 16 ตร.วา (เหมือนกับอาคารพาณิชย์)"},
+
+  {cat:"จัดสรรที่ดิน", q:"ที่ดินจัดสรรขนาดเล็กตามข้อกำหนดเป็นอย่างไร?", a:"ไม่เกิน 99 แปลง และต่ำกว่า 19 ไร่",
+    choices:["ไม่เกิน 50 แปลง", "ไม่เกิน 99 แปลง และต่ำกว่า 19 ไร่", "เกิน 200 แปลง", "ระหว่าง 100-199 แปลง"], correct:1,
+    explanation:"การจัดสรรขนาดเล็ก: ไม่เกิน 99 แปลง และโครงการต่ำกว่า 19 ไร่ (สำหรับบ้านแถว/พาณิชย์ ใช้ 16 ไร่)"},
+
+  {cat:"จัดสรรที่ดิน", q:"การนำแปลงที่ดินหลายแปลงมารวมและจัดรูปใหม่เพื่อสาธารณูปโภคที่ดีขึ้นเรียกว่าอะไร?", a:"Land Readjustment (การจัดรูปที่ดิน)",
+    choices:["Land Sharing", "Land Pooling", "Land Readjustment", "Land Acquisition"], correct:2,
+    explanation:"Land Readjustment = นำแปลงที่ดินหลายแปลงมารวมกัน จัดรูปใหม่ พร้อมสาธารณูปโภค ทำได้ด้วยความร่วมมือของเจ้าของที่ดิน"},
+
+  {cat:"จัดสรรที่ดิน", q:"เจ้าของที่ดินพัฒนาส่วนหนึ่งและให้ส่วนหลังแก่ชุมชนรายได้น้อย เรียกว่าอะไร?", a:"Land Sharing",
+    choices:["Relocation", "Slum Upgrading", "Land Sharing", "Reblocking"], correct:2,
+    explanation:"Land Sharing = เจ้าของที่ดินแบ่งส่วนพัฒนาให้กับชุมชนรายได้น้อยที่อยู่เดิม"},
+
+  {cat:"จัดสรรที่ดิน", q:"การปรับผังบ้าน/ถนนเพื่อติดตั้งท่อน้ำทิ้ง ทางเดิน ในชุมชนที่มีอยู่ เรียกว่าอะไร?", a:"Reblocking",
+    choices:["Rebuilding", "Reblocking", "Reconstruction", "Upgrading"], correct:1,
+    explanation:"Reblocking = การปรับเปลี่ยนรูปแบบของบ้านและถนนเพื่อติดตั้งสาธารณูปโภคในชุมชนเดิม"},
+
+  // ===== TOD =====
+  {cat:"TOD/ผังเมือง", q:"องค์ประกอบใดที่<strong>ไม่ใช่</strong>ส่วนของ TOD?", a:"บ้านเดี่ยว/บ้านแถว (Detached + Row House)",
+    choices:["Mix Residential + Commercial", "Network of various transportation modes", "Detached + Row House", "Maximize public transportation"], correct:2,
+    explanation:"TOD ต้องการความหนาแน่นสูง — บ้านเดี่ยว/แถวมีความหนาแน่นต่ำ ไม่เหมาะกับ TOD"},
+
+  {cat:"TOD/ผังเมือง", q:"แนวคิด 'Compact City' เกิดครั้งแรกในปีใด?", a:"ค.ศ. 1973 โดย George Dantzig และ Thomas L. Saaty",
+    choices:["1933", "1953", "1973", "1993"], correct:2,
+    explanation:"Compact City เสนอครั้งแรก ค.ศ. 1973 โดย George Dantzig และ Thomas L. Saaty"},
+
+  {cat:"TOD/ผังเมือง", q:"องค์ประกอบใดไม่ใช่ส่วนของ Doxiadis Settlement (Ekistics)?", a:"Government",
+    choices:["Nature", "Society", "Government", "Shell"], correct:2,
+    explanation:"5 องค์ประกอบ Doxiadis: Nature, Anthropos, Society, Shell, Network — Government ไม่อยู่ในระบบนี้"},
+
+  {cat:"TOD/ผังเมือง", q:"Rural-Urban Fringe หมายถึงอะไร?", a:"แหล่งเจริญรอบนอกเขตเมือง ยังไม่อยู่ในความดูแลของเมือง",
+    choices:["ใจกลางเมือง", "แหล่งเจริญรอบนอกเขตเมือง", "ชนบทห่างไกล", "เขตอุตสาหกรรม"], correct:1,
+    explanation:"Rural-Urban Fringe = บริเวณรอบนอกเขตเมือง ขยายตัวรวดเร็ว ยังไม่อยู่ในการจัดการของเมือง"},
+
+  // ===== นักผังเมือง =====
+  {cat:"นักผังเมือง", q:"ใครคือนักผังเมืองในศตวรรษที่ 20?", a:"Le Corbusier",
+    choices:["Le Corbusier", "Frederick Law Olmsted", "Vitruvius", "Plato"], correct:0,
+    explanation:"Le Corbusier (1887-1965) เป็นสถาปนิก/นักผังเมือง Modernist ในศตวรรษ 20 — Olmsted ศตวรรษ 19, Vitruvius โรมัน, Plato กรีก"},
+
+  {cat:"นักผังเมือง", q:"ข้อใดไม่ใช่ปรัชญาของ Jane Jacobs?", a:"Renovation of Paris (เป็นของ Haussmann)",
+    choices:["Eyes on the street", "Cities as ecosystem", "Public Participation", "Renovation of Paris"], correct:3,
+    explanation:"Renovation of Paris เป็นของ Baron Haussmann ในศตวรรษ 19 — Jane Jacobs วิพากษ์การวางผังแบบ Top-Down"},
+
+  {cat:"นักผังเมือง", q:"Notre-Dame de Paris เป็นสถาปัตยกรรมยุคใด?", a:"Gothic (ยุคกลาง)",
+    choices:["Classical", "Gothic", "Renaissance", "Baroque"], correct:1,
+    explanation:"Notre-Dame de Paris เป็น Gothic Cathedral — โครงสร้างหลังคาโค้งแหลม กระจกสี ทรงสูง"},
+
+  {cat:"นักผังเมือง", q:"เจดีย์ทรง 'พุ่มข้าวบิณฑ์' (ดอกบัวตูม) เป็นเอกลักษณ์ของยุคใด?", a:"สุโขทัย",
+    choices:["รัตนโกสินทร์", "อยุธยา", "สุโขทัย", "เชียงแสน"], correct:2,
+    explanation:"เจดีย์ทรงพุ่มข้าวบิณฑ์เป็นเอกลักษณ์ของศิลปะสุโขทัย ใช้ปูนปั้นและศิลาแลง"},
+
+  // ===== GIS / Topography =====
+  {cat:"GIS", q:"องค์ประกอบใดไม่ใช่ส่วนหลักของ GIS?", a:"GIS มี 5 องค์ประกอบ: Hardware, Software, Methods, Data, People",
+    choices:["Hardware", "Software", "Marketing", "Data"], correct:2,
+    explanation:"5 องค์ประกอบ GIS: Hardware, Software, Methods, Data, People — Marketing ไม่อยู่ในระบบ"},
+
+  {cat:"GIS", q:"ข้อใดไม่ใช่ GIS Software?", a:"PhotoShop ไม่ใช่ GIS — เป็นโปรแกรมแต่งภาพ",
+    choices:["ArcGIS", "QGIS", "MapInfo", "PhotoShop"], correct:3,
+    explanation:"GIS Software ได้แก่ ArcGIS, ArcMap, ArcView, QGIS, MapInfo — PhotoShop เป็นโปรแกรมตกแต่งภาพ"},
+
+  {cat:"GIS", q:"โครงสร้างข้อมูล 3 มิติที่ใช้ Vector + Topology เรียกว่าอะไร?", a:"TIN (Triangulated Irregular Network)",
+    choices:["DEM", "TIN", "Raster", "Mesh"], correct:1,
+    explanation:"TIN = Triangulated Irregular Network ใช้แสดงภูมิประเทศ 3 มิติ ด้วย Vector และ Topology"},
+
+  {cat:"GIS", q:"การใช้ดาวเทียมเก็บข้อมูลพื้นผิวโลกเรียกว่าอะไร?", a:"Remote Sensing",
+    choices:["GPS", "GIS", "Remote Sensing", "Photogrammetry"], correct:2,
+    explanation:"Remote Sensing (RS) = การใช้ดาวเทียม/sensor เก็บข้อมูลจากระยะไกล"},
+
+  {cat:"GIS", q:"GPS ใช้ดาวเทียมกี่ดวง?", a:"24 ดวง รับสัญญาณจาก 3-4 ดวง",
+    choices:["8 ดวง", "12 ดวง", "24 ดวง", "32 ดวง"], correct:2,
+    explanation:"GPS มีดาวเทียม 24 ดวงโคจรในวงโคจรระดับสูง รับสัญญาณจาก 3-4 ดวงเพื่อระบุตำแหน่ง"},
+
+  {cat:"Topography", q:"เส้นชั้นความสูง (Contour) ที่เป็นวงปิดบอกอะไร?", a:"Mountain Top (ยอดเขา)",
+    choices:["River", "Valley", "Mountain Top", "Cliff"], correct:2,
+    explanation:"วงปิดที่ตัวเลขเพิ่มขึ้นเข้าใน = ยอดเขา / ถ้ามีขีดเล็ก (Hachure) ชี้เข้าใน = Depression"},
+
+  {cat:"Topography", q:"V-shaped contour lines (V ชี้ขึ้นเขา) บอกอะไร?", a:"Stream Valley (หุบเขามีลำธาร)",
+    choices:["Mountain Top", "Cliff", "Stream Valley", "Depression"], correct:2,
+    explanation:"V ชี้ขึ้นเขา = Stream Valley (V ชี้ไปทางต้นน้ำ/ที่สูง) / V ชี้ลงเขา = Ridge หรือ Spur"},
+
+  {cat:"Topography", q:"Contour lines ที่ชิดกันมากบอกอะไร?", a:"Cliff (หน้าผา) — ความลาดชันมาก",
+    choices:["Gentle slope", "Cliff", "Forest", "Swamp"], correct:1,
+    explanation:"Contour ชิดกัน = ความลาดชันสูง → Cliff"},
+
+  {cat:"Topography", q:"ความลาดที่พัฒนาได้ (Developable Slope) ที่เหมาะสมคือเท่าไร?", a:"8-16% (หรือ 2-8% เหมาะสุด)",
+    choices:["24+%", "2-8%", "16-24%", "8-16%"], correct:3,
+    explanation:"8-16% เป็นช่วงพัฒนาได้ (Developable) — 2-8% เหมาะที่สุด, >24% ไม่ควรพัฒนา"},
+
+  {cat:"Topography", q:"ที่ Slope 3.6% จุดยอด 47.74 ม. ระยะลงไปยังเส้น 47 ม. = เท่าไร?", a:"L = (47.74-47)/0.036 = 20.55 ม.",
+    choices:["4.86 ม.", "20.55 ม.", "486.48 ม.", "0.20 ม."], correct:1,
+    explanation:"ΔE = 47.74 − 47 = 0.74 ม. → L = ΔE/S = 0.74/0.036 = 20.55 ม."},
+
+  {cat:"Topography", q:"ต้นไม้ 2 ต้นห่าง 87 ม. slope 0.04 ต้นบน 956.58 ม. ต้นล่างเท่าไร?", a:"956.58 - (87×0.04) = 953.10 ม.",
+    choices:["1,304.58 ม.", "608.58 ม.", "953.10 ม.", "ไม่มีคำตอบถูก"], correct:2,
+    explanation:"ΔE = 87 × 0.04 = 3.48 ม. → ต้นล่าง = 956.58 − 3.48 = 953.10 ม."},
+
+  {cat:"Topography", q:"Ramp ลด 3.2 ฟุต ที่ slope 8% ต้องยาวเท่าไร?", a:"L = 3.2 ÷ 0.08 = 40 ฟุต",
+    choices:["25 ฟุต", "40 ฟุต", "20 ฟุต", "45 ฟุต"], correct:1,
+    explanation:"L = ΔE/S = 3.2/0.08 = 40 ฟุต"},
+
+  {cat:"Topography", q:"Landform คืออะไร?", a:"คุณลักษณะบนพื้นผิวโลกที่เป็นส่วนหนึ่งของภูมิประเทศ",
+    choices:["Vegetation", "Drainage", "Landform", "Soil"], correct:2,
+    explanation:"Landform = ภูมิลักษณ์/รูปแบบของพื้นผิวโลก เช่น ภูเขา หุบเขา ที่ราบ"},
+
+  // ===== สถิติ =====
+  {cat:"สถิติ", q:"วันจันทร์ อังคาร พุธ พฤหัส ศุกร์ เป็นข้อมูลระดับใด?", a:"Nominal Scale (ชื่อ/ประเภท ไม่มีลำดับ)",
+    choices:["Nominal", "Ordinal", "Interval", "Ratio"], correct:0,
+    explanation:"วันในสัปดาห์เป็น Nominal — เป็นชื่อ/ประเภท ไม่มีลำดับเชิงปริมาณ"},
+
+  {cat:"สถิติ", q:"ข้อใดไม่ใช่ Central Tendency?", a:"Percentile (เป็น Position ไม่ใช่ Central Tendency)",
+    choices:["Mode", "Median", "Mean", "Percentile"], correct:3,
+    explanation:"Central Tendency: Mode, Median, Mean — Percentile/Quartile เป็น Position"},
+
+  {cat:"สถิติ", q:"เปรียบเทียบรายได้ระหว่างชายและหญิง ใช้สถิติอะไร?", a:"Independent t-test (2 กลุ่มอิสระ)",
+    choices:["Paired t-test", "Independent t-test", "ANOVA", "Chi-square"], correct:1,
+    explanation:"ชาย vs หญิง เป็น 2 กลุ่มอิสระ ตัวแปรตามต่อเนื่อง (รายได้) → Independent t-test"},
+
+  {cat:"สถิติ", q:"เปรียบเทียบค่าใช้จ่ายระหว่าง 3 กลุ่มนักท่องเที่ยว ใช้สถิติอะไร?", a:"One-Way ANOVA (3+ กลุ่ม)",
+    choices:["t-test", "One-Way ANOVA", "Chi-square", "Correlation"], correct:1,
+    explanation:"3 กลุ่มขึ้นไป + ตัวแปรตามต่อเนื่อง → One-Way ANOVA"},
+
+  {cat:"สถิติ", q:"ทดสอบความสัมพันธ์ระหว่างประเภทผู้ใช้เรือ (นักเรียน/ผู้ใหญ่/ผู้สูงอายุ) × ระยะเวลาเดินทาง (3 ช่วง) ใช้อะไร?", a:"Chi-square (ตัวแปร 2 ตัวเป็น categorical)",
+    choices:["t-test", "ANOVA", "Chi-square", "Pearson Correlation"], correct:2,
+    explanation:"ตัวแปร 2 ตัวเป็น categorical (กลุ่ม) → Chi-square test"},
+
+  {cat:"สถิติ", q:"คะแนนสอบ vs จำนวนคาบที่ขาด มีความสัมพันธ์เชิงลบสูง ค่า r เท่าใด?", a:"r เข้าใกล้ -1",
+    choices:["+1", "0", "-1", "ไม่มีความสัมพันธ์"], correct:2,
+    explanation:"ความสัมพันธ์เชิงลบสูง → r เข้าใกล้ -1 (ขาดมาก คะแนนน้อย)"},
+
+  {cat:"สถิติ", q:"A อยู่ Q2, B อยู่ decile 5, C อยู่ percentile 25, D อยู่ median ใครต่ำสุด?", a:"C (percentile 25)",
+    choices:["A", "B", "C", "D"], correct:2,
+    explanation:"Q2 = 50th percentile = 5th decile = Median → A, B, D เท่ากันที่ 50% / C ต่ำสุดที่ 25%"},
+
+  {cat:"สถิติ", q:"เปรียบเทียบค่าใช้จ่ายต่อวันของ 100 ไทย vs 100 ต่างชาติ ใช้อะไร? Independent หรือ Paired?", a:"Independent t-test เพราะเป็น 2 กลุ่มอิสระ",
+    choices:["Paired t-test เพราะมี 2 กลุ่ม", "Independent t-test เพราะ 2 กลุ่มอิสระ", "ANOVA เพราะมี 2 ตัวแปร", "Chi-square เพราะเป็น categorical"], correct:1,
+    explanation:"คนไทย กับ คนต่างชาติ เป็นคนละกลุ่ม ไม่ใช่กลุ่มเดียววัดก่อน-หลัง → Independent t-test"},
+
+  {cat:"สถิติ", q:"การวิจัยใดเก็บข้อมูลผ่านการสังเกตในชีวิตประจำวันและปฏิสัมพันธ์ผชิญหน้า?", a:"Field Research (การวิจัยภาคสนาม)",
+    choices:["Survey Research", "Field Research", "Experimental Research", "Documentary Research"], correct:1,
+    explanation:"Field Research เน้นปฏิสัมพันธ์ผชิญหน้า สังเกตในชีวิตประจำวัน ระยะยาว เพื่อเข้าใจวัฒนธรรม"},
+
+  // ===== ประชากร / เศรษฐศาสตร์ =====
+  {cat:"ประชากร", q:"การย้ายถิ่นไปแล้วกลับมาที่เดิมในช่วงเวลาหนึ่ง เรียกว่าอะไร?", a:"Circular Migration",
+    choices:["Return Migration", "Circular Migration", "Permanent Migration", "Seasonal Migration"], correct:1,
+    explanation:"Circular Migration = ย้ายไปแล้วกลับมาเป็นวงจร / Return Migration = ย้ายแล้วกลับมาอยู่ถาวร"},
+
+  {cat:"ประชากร", q:"ปัจจุบัน 40,000 คน @ 25 คน/ไร่ ใน 10 ปี เพิ่ม 20% มาตรฐาน 30 คน/ไร่ ต้องการกี่ไร่เพิ่ม?", a:"0 ไร่ (เพราะ 1,600 ไร่ เท่าเดิม)",
+    choices:["1,600 ไร่", "400 ไร่", "0 ไร่", "800 ไร่"], correct:2,
+    explanation:"ปัจจุบัน 40,000/25=1,600 ไร่ → อนาคต 48,000/30=1,600 ไร่ เพิ่ม 0 ไร่"},
+
+  {cat:"เศรษฐศาสตร์", q:"ทำไมโรงเบียร์ตั้งใกล้ตลาดและไกลแหล่งวัตถุดิบ?", a:"ลดต้นทุนขนส่งสินค้าสำเร็จรูปที่หนัก (Weight-Gaining Industry)",
+    choices:["ใกล้แรงงาน", "ลดต้นทุนขนส่งสินค้าสำเร็จรูปที่หนัก", "ใกล้แหล่งพลังงาน", "ภาษีน้อยกว่า"], correct:1,
+    explanation:"เบียร์เป็นของเหลวหนัก ขนส่งสิ้นเปลือง วัตถุดิบ (น้ำ) หาได้ทุกที่ → ตั้งใกล้ตลาดเพื่อลดต้นทุนขนส่ง"},
+
+  {cat:"เศรษฐศาสตร์", q:"ทำไมเส้นโค้งมูลค่า Leasehold ลดลงตามเวลา?", a:"เมื่อสิ้นสุดระยะเช่า ที่ดินและอาคารกลับสู่เจ้าของที่ดิน",
+    choices:["ระยะเช่ายาวเกินไป", "Leasehold ไม่ทำกำไรสูง", "Leasehold ไม่นิยมเทียบกับ Freehold", "ที่ดินและอาคารกลับสู่เจ้าของที่ดิน"], correct:3,
+    explanation:"Leasehold = สิทธิเช่ามีกำหนด — เมื่อสิ้นสุดระยะ ทรัพย์สินกลับสู่เจ้าของที่ดิน → มูลค่าลดเมื่อเวลาผ่าน"},
+
+  {cat:"เศรษฐศาสตร์", q:"ปัจจัยใดทำให้มูลค่าที่ดินเพิ่มสูงขึ้น?", a:"การส่งเสริมเขตเศรษฐกิจพิเศษ (SEZ)",
+    choices:["เปลี่ยนพาณิช → ที่อยู่อาศัย", "เปลี่ยนที่อยู่ → พื้นที่อนุรักษ์เกษตร", "ส่งเสริมเขตเศรษฐกิจพิเศษ", "ทุกข้อถูก"], correct:2,
+    explanation:"SEZ เพิ่มกิจกรรมเศรษฐกิจ → มูลค่าเพิ่ม / Downzoning และเปลี่ยนเป็นพื้นที่อนุรักษ์มักทำให้มูลค่าลด"},
+
+  // ===== โครงสร้างพื้นฐาน =====
+  {cat:"โครงสร้างพื้นฐาน", q:"การบำบัดน้ำเสียขั้น Tertiary (ขั้นสูง) ทำหน้าที่อะไรเป็นหลัก?", a:"กำจัด Nitrogen, Phosphorus + การกรอง",
+    choices:["แยกของแข็งขนาดใหญ่", "บำบัดด้วยจุลินทรีย์", "กำจัด N, P + การกรอง", "ฆ่าเชื้อโรค"], correct:2,
+    explanation:"Tertiary = ขั้นสูง: กำจัด Nitrogen (Nitrification/Denitrification), Phosphorus, การกรอง, การดูดติดผิว (Adsorption)"},
+
+  {cat:"โครงสร้างพื้นฐาน", q:"วิธีใด<strong>ไม่ใช่</strong>การจัดการน้ำท่วมแบบยั่งยืน?", a:"การสร้างรางคอนกรีต+อุโมงค์ส่งน้ำลงทะเลเร็ว",
+    choices:["สวนหลังคา/สวนแนวตั้ง", "คูน้ำข้างถนน (Bioswale)", "รางคอนกรีต+อุโมงค์ส่งน้ำลงทะเลเร็ว", "พื้นที่หน่วงน้ำ (Retention Pond)"], correct:2,
+    explanation:"การส่งน้ำลงทะเลเร็วๆ ผ่านคอนกรีต ไม่ยั่งยืน — ควรชะลอน้ำ ให้ซึมลงดิน หรือกักเก็บไว้ใช้"},
+
+  {cat:"โครงสร้างพื้นฐาน", q:"ข้อใดไม่ใช่ประโยชน์ของ Bioswale?", a:"ตอบสนอง EIA เพียงอย่างเดียว",
+    choices:["น้ำซึมลงดิน ลดความร้อน", "ปลูกพืช เสริมระบบนิเวศ", "แบ่งทางเดินเท้า/พื้นที่เอกชน", "ตอบสนอง EIA เพียงอย่างเดียว"], correct:3,
+    explanation:"Bioswale เป็นวิธีจัดการน้ำตามธรรมชาติ มีประโยชน์หลายด้าน ไม่ใช่แค่ตอบสนอง EIA"},
+
+  {cat:"โครงสร้างพื้นฐาน", q:"ทางแยก 4 แยกปกติมีจุด Conflict กี่จุด?", a:"32 จุด (Diverge 8 + Merge 8 + Cross 16)",
+    choices:["16 จุด", "24 จุด", "32 จุด", "48 จุด"], correct:2,
+    explanation:"Conflict Points: Diverging 8 + Merging 8 + Crossing 16 = 32 จุดรวม"},
+
+  // ===== EIA =====
+  {cat:"EIA", q:"หน่วยงานใดมีบทบาทสำคัญในการวัดคุณภาพสิ่งแวดล้อมในประเทศไทย?", a:"กรมควบคุมมลพิษ (Pollution Control Department)",
+    choices:["กรมโยธาธิการและผังเมือง", "สผ. (ONEP)", "กรมพัฒนาที่ดิน", "กรมควบคุมมลพิษ"], correct:3,
+    explanation:"กรมควบคุมมลพิษเป็นหน่วยงานหลักในการตรวจวัดและจัดการคุณภาพสิ่งแวดล้อม"},
+
+  {cat:"EIA", q:"ทรัพยากรใดที่<strong>ไม่</strong>ปรากฏในแผนที่ทรัพยากร/สิ่งแวดล้อมตาม พ.ร.บ. ผังเมือง 2562?", a:"Geographical Indication (GI)",
+    choices:["Mineral Resources", "National Park", "Water Pollution", "Geographical Indication"], correct:3,
+    explanation:"GI เป็นสิ่งบ่งชี้ทางการค้า (เช่น 'ข้าวหอมมะลิทุ่งกุลา') ไม่ใช่ทรัพยากรสิ่งแวดล้อม"},
+
+  {cat:"EIA", q:"NEPA หมายถึงอะไร?", a:"National Environmental Policy Act (สหรัฐอเมริกา ปี 1969)",
+    choices:["จัดตั้ง CEQ (Council on Environmental Quality)", "เป็นรากฐานการทำ EIA ทั่วโลก", "เกิดในสหรัฐฯ เพื่อปกป้องทรัพยากรสิ่งแวดล้อม", "ทุกข้อถูก"], correct:3,
+    explanation:"NEPA เกิดปี 1969 ในสหรัฐฯ — ทำให้เกิด CEQ และเป็นรากฐาน EIA ทั่วโลก"},
+
+  {cat:"EIA", q:"Method ของ EIA แบบใดแสดงความสัมพันธ์ Cause-Condition-Effect และเหมาะกับโครงการใหญ่?", a:"Network Method",
+    choices:["Checklist", "Matrix", "Network Method", "Ad Hoc"], correct:2,
+    explanation:"Network Method แสดง Cause-Condition-Effect ทั้งทางตรง/อ้อม เหมาะกับโครงการพัฒนาขนาดใหญ่"},
+
+  {cat:"EIA", q:"วิธีใดของ EIA ใช้เมื่อมีข้อจำกัดด้านเวลาและข้อมูล โดยอาศัยผู้เชี่ยวชาญ?", a:"Ad Hoc Method (คณะกรรมการ/ผู้เชี่ยวชาญ)",
+    choices:["Checklist", "Matrix", "Ad Hoc", "Overlay"], correct:2,
+    explanation:"Ad Hoc = ใช้ความเห็นของคณะผู้เชี่ยวชาญ (Committee) เมื่อขาดข้อมูลหรือเวลาจำกัด"},
+
+  {cat:"EIA", q:"4-tier System ของทรัพยากรสิ่งแวดล้อมประกอบด้วยอะไร?", a:"Physical + Biological + Human Use Value + Quality of Life Value",
+    choices:["Land, Water, Air, Energy", "Physical, Biological, Human Use, Quality of Life", "Soil, Plant, Animal, Human", "Urban, Rural, Industrial, Agricultural"], correct:1,
+    explanation:"4-tier System: 1) ทรัพยากรกายภาพ 2) ชีวภาพ 3) คุณค่าการใช้ประโยชน์มนุษย์ 4) คุณค่าคุณภาพชีวิต"},
+
+  {cat:"EIA", q:"วัตถุประสงค์ของ Mitigation Measure คืออะไร?", a:"ป้องกัน แก้ไขผลกระทบ และชดเชยเยียวยา",
+    choices:["เพิ่มผลตอบแทนโครงการ", "ลดต้นทุนการพัฒนา", "ป้องกัน แก้ไขผลกระทบ ชดเชยเยียวยา", "เร่งการอนุมัติโครงการ"], correct:2,
+    explanation:"Mitigation Measure = ป้องกัน แก้ไขผลกระทบสิ่งแวดล้อม และชดเชยเยียวยาความเดือดร้อน/เสียหาย"},
+
+  // ===== ทฤษฎี =====
+  {cat:"ทฤษฎี", q:"ข้อใดเป็น Spatial Policy Planning for Location and Area Requirements?", a:"Land Classifications + Urban Land Use Design",
+    choices:["Land Classifications", "Urban Land Use Design", "Design with Nature", "Land Classifications + Urban Land Use Design"], correct:3,
+    explanation:"นโยบายเชิงพื้นที่ = Land Classifications + Urban Land Use Design / Design with Nature เป็นวิธีออกแบบ"},
+
+  {cat:"ทฤษฎี", q:"Policy-Making ในผังเมืองใช้อำนาจอะไร?", a:"Legal Power (อำนาจนิติบัญญัติ)",
+    choices:["Zoning Power", "Legal Power", "Purchasing Power", "Design Power"], correct:1,
+    explanation:"Policy-Making (ออกนโยบาย/กฎหมาย) ใช้ Legal Power / Implementation ใช้ Administrative Power"},
+
+  {cat:"ทฤษฎี", q:"Policy Implementation ในผังเมืองใช้อำนาจอะไร?", a:"Administrative Power (อำนาจบริหาร)",
+    choices:["Administrative Power", "Cooperation Power", "Taking Power", "Budgeting Power"], correct:0,
+    explanation:"Implementation = การนำไปปฏิบัติ ใช้ Administrative Power ของฝ่ายบริหาร"},
+
+  {cat:"ทฤษฎี", q:"ข้อใดไม่ใช่ส่วนของ Stakeholder Analysis?", a:"รวบรวมชื่อเสียง/คำร้องเรียนจากชุมชน",
+    choices:["ระบุผู้มีส่วนได้เสีย", "เข้าใจระดับการมีส่วนร่วม", "รวบรวมชื่อเสียง/คำร้องเรียน", "เข้าใจความสนใจในโครงการ"], correct:2,
+    explanation:"Stakeholder Analysis = ระบุ/เข้าใจระดับการมีส่วนร่วม/ความสนใจ — Reputation Management ไม่ใช่ส่วนนี้"},
+
+  {cat:"ทฤษฎี", q:"ขั้นแรกของ Location Decisions คืออะไร?", a:"Identify dominant location factors / criteria",
+    choices:["Evaluate the alternatives", "Identify factor/criteria to evaluate alternatives", "Identify community-site alternatives", "Evaluate important factors"], correct:1,
+    explanation:"ขั้นแรก = ระบุปัจจัย/เกณฑ์ที่จะใช้ประเมิน → พัฒนาทางเลือก → ประเมิน"},
+
+  {cat:"ทฤษฎี", q:"จุดประสงค์ของ Program Analysis คืออะไร?", a:"เชื่อม Analysis-Design และตั้ง Goals/Objectives",
+    choices:["B. and C.", "A. only (เชื่อม Analysis-Design)", "B. only (ตั้ง Goals)", "A. and B."], correct:3,
+    explanation:"Program Analysis = (A) เชื่อม Analysis และ Design Phases + (B) ช่วยตั้ง Goals/Objectives/Elements — ไม่รวม (C) รับประกันโครงการสำเร็จ"},
+
+  {cat:"ทฤษฎี", q:"ข้อใดไม่จริงเกี่ยวกับ Composite Analysis Map?", a:"เป็น End Product ของ Program Analysis Phase",
+    choices:["พิจารณาทุกปัจจัย", "เป็น End Product ของ Program Analysis Phase", "ระบุพื้นที่เหมาะ/ไม่เหมาะของ Site", "ทำผ่าน Overlay Process"], correct:1,
+    explanation:"Composite Analysis Map เป็น End Product ของ Site Analysis ไม่ใช่ Program Analysis"},
+
+  {cat:"ทฤษฎี", q:"พืชชนิดใดควรใช้ในการออกแบบเพราะปรับตัวกับสภาพ Site ได้ดีที่สุด?", a:"Native Plants (พืชพื้นถิ่น)",
+    choices:["All grasses", "Introduced species", "Most trees", "Native Plants"], correct:3,
+    explanation:"Native Plants ปรับตัวกับสภาพอากาศ/ดินในพื้นที่โดยธรรมชาติ ดูแลง่าย ยั่งยืน"},
+
+  {cat:"ทฤษฎี", q:"เมื่อพัฒนา Site ควรรักษาอะไร?", a:"All of the above (Rock, Grade Change, Existing Vegetation)",
+    choices:["Rock", "Grade Change", "Existing Vegetation", "All of the above"], correct:3,
+    explanation:"ควรรักษาทรัพยากรธรรมชาติทุกประเภทที่มีอยู่ — Rock, Grade Change, Existing Vegetation"},
+
+  {cat:"ทฤษฎี", q:"ASHRAE นิยาม Thermal Comfort อย่างไร?", a:"The state of mind that expresses satisfaction with the thermal environment",
+    choices:["สภาวะที่ไม่อึดอัด", "สภาวะที่ร่างกาย 36.5-37°C", "สภาวะของจิตใจที่พอใจกับอุณหภูมิ", "การเสริมสร้างทางจิตวิญญาณ"], correct:2,
+    explanation:"ASHRAE: 'state of mind that expresses satisfaction with the thermal environment'"},
+
+  {cat:"ทฤษฎี", q:"ข้อใดไม่ใช่เป้าหมายหลักของ Sustainable Design?", a:"Designs that have lower initial costs",
+    choices:["Easily Recyclable", "Easily Biodegradable", "Lower initial costs", "Designs that use less"], correct:2,
+    explanation:"Sustainable Design เน้น Life Cycle Cost ไม่ใช่ Initial Cost — ราคาแรกเริ่มอาจสูงแต่ประหยัดระยะยาว"},
+
+  {cat:"ทฤษฎี", q:"ข้อใดไม่จริงเกี่ยวกับ Design Process?", a:"It is always a one-way and sequential process",
+    choices:["3 Phases: Research, Analysis, Synthesis", "Link between ideas and results", "One-way and sequential", "Thought process to solve problem"], correct:2,
+    explanation:"Design Process เป็น Iterative ไม่ใช่ One-way — สามารถวนกลับไปแก้ไขในขั้นตอนต่างๆ ได้"},
+
+  {cat:"ทฤษฎี", q:"ทำไมต้องมี Multiple Design Schemes ในช่วงต้น?", a:"เพื่อเปรียบเทียบข้อดี-ข้อเสียของทางเลือก",
+    choices:["เปรียบเทียบข้อดี-ข้อเสียของทางเลือก", "Brainstorm จากทีมออกแบบ", "สำรวจแนวคิดต่างๆ", "พัฒนาแบบเบื้องต้น"], correct:0,
+    explanation:"เหตุผลสำคัญที่สุด = เปรียบเทียบ Advantages/Disadvantages ของ Alternatives เพื่อเลือกแบบที่ดีที่สุด"},
+
+  {cat:"ทฤษฎี", q:"Urban Canopy Layer คืออะไร?", a:"ชั้นอากาศที่ระดับความสูงเฉลี่ยของอาคารและต้นไม้",
+    choices:["Urban Boundary Layer", "Rural Boundary Layer", "Urban Canopy Layer", "ไม่มีคำตอบถูก"], correct:2,
+    explanation:"Urban Canopy Layer = ชั้นอากาศระหว่างพื้นดินถึงยอดอาคาร/ต้นไม้ — ภูมิอากาศถูกครอบงำโดย microscale processes"},
+
+  // ===== Communicative Planning T/F =====
+  {cat:"Communicative Planning", q:"True/False: Communicative Planning เป็นเพียงส่วนต่อขยายของ Modernist Planning", a:"FALSE — Communicative Planning เป็นแนวคิดใหม่ที่วิพากษ์ Modernist Planning",
+    choices:["TRUE", "FALSE"], correct:1,
+    explanation:"Communicative Planning เป็นทฤษฎีใหม่ที่ต่างจาก Modernist Planning ตรงที่เน้นการสื่อสาร การมีส่วนร่วม และยอมรับความซับซ้อนของสังคม"},
+
+  {cat:"Communicative Planning", q:"True/False: นักวางแผนต้องตามผลประโยชน์ของนักการเมือง", a:"FALSE — นักวางแผนไม่ต้องตามนักการเมือง",
+    choices:["TRUE", "FALSE"], correct:1,
+    explanation:"แม้ Communicative Planning ยอมรับว่าอำนาจไม่ใช่แค่ด้านลบ แต่นักวางแผนต้องรักษาความเป็นมืออาชีพ ไม่ใช่ตามใจนักการเมือง"},
+
+  {cat:"Communicative Planning", q:"True/False: นักวางแผนเลือกได้ว่าจะสื่อสารหรือไม่ก็ได้", a:"FALSE — การสื่อสารเป็นหัวใจของ Communicative Planning",
+    choices:["TRUE", "FALSE"], correct:1,
+    explanation:"การสื่อสารและมีส่วนร่วมเป็น<strong>หัวใจ</strong> ไม่ใช่ทางเลือก — แม้จะทำให้กระบวนการช้าก็ยังต้องทำ"},
+
+  {cat:"Communicative Planning", q:"True/False: Communicative Planning Theory มีรากฐาน Normative ที่แข็งแกร่ง", a:"TRUE",
+    choices:["TRUE", "FALSE"], correct:0,
+    explanation:"ทฤษฎีนี้มีฐานเชิงคุณค่า (Normative) ชัดเจน ยึดมั่นในประชาธิปไตยและการมีส่วนร่วม"},
+
+  {cat:"Communicative Planning", q:"True/False: การมุ่งกระบวนการสื่อสารช่วยให้ละเลยการต่อสู้ก่อนหน้า", a:"FALSE",
+    choices:["TRUE", "FALSE"], correct:1,
+    explanation:"ไม่ควรละเลย — การต่อสู้ก่อนหน้าเป็นส่วนสำคัญที่ต้องเรียนรู้และเข้าใจบริบท"},
+
+  // ===== ทรัพย์สิน =====
+  {cat:"ทรัพย์สิน", q:"True/False: ทรัพย์สินส่วนตัวถูกนำมาใช้สาธารณะได้โดยต้องชดเชยและปรึกษาประชาชน", a:"TRUE — Eminent Domain ต้องมี Just Compensation + Public Consultation",
+    choices:["TRUE", "FALSE"], correct:0,
+    explanation:"Eminent Domain Principle: ทรัพย์สินส่วนตัวถูกใช้สาธารณะได้ ต่อเมื่อ Just Compensation + Public Consultation"},
+
+  {cat:"ทรัพย์สิน", q:"True/False: ระบบ Zoning ในไทยปัจจุบันเป็น Form-Based Code", a:"FALSE — ไทยใช้ Conventional Use-Based Zoning",
+    choices:["TRUE", "FALSE"], correct:1,
+    explanation:"ไทยใช้ Use-Based Zoning (กำหนดประเภทการใช้) ไม่ใช่ Form-Based Code (กำหนดรูปร่าง)"},
+
+  {cat:"ทรัพย์สิน", q:"TDR (Transfer Development Rights) คืออะไร?", a:"ระบบโอนสิทธิการพัฒนาจากเขตอนุรักษ์ไปยังเขตอื่น",
+    choices:["การขายที่ดินทั้งหมด", "การให้เช่าที่ดินระยะยาว", "การโอนสิทธิการพัฒนาจากเขตอนุรักษ์", "การเปลี่ยน Zoning"], correct:2,
+    explanation:"TDR = เจ้าของที่ดินในเขตอนุรักษ์ (Sending Area) ขายสิทธิการพัฒนาให้กับเจ้าของที่ดินในเขต Receiving Area"},
+];
+
+// ============== STATE ==============
+let mode = 'flashcard';
+let currentCategory = "ทั้งหมด";
+
+// Flashcard state
+let fcCards = [...allCards];
+let fcIdx = 0;
+let fcFlipped = false;
+let known = new Set();
+let review = new Set();
+
+// Quiz state
+let qzCards = [];
+let qzIdx = 0;
+let qzCorrect = 0;
+let qzWrong = 0;
+let qzAnswered = false;
+let qzWrongAnswers = []; // {card, picked}
+let qzShuffledChoices = []; // mapping of shuffled order
+
+const categories = ["ทั้งหมด", ...new Set(allCards.map(c => c.cat))];
+
+// ============== UI FUNCTIONS ==============
+function switchMode(newMode) {
+  mode = newMode;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  event && event.target && event.target.classList.add('active');
+  // Also set active by index
+  if (newMode === 'flashcard') {
+    document.querySelectorAll('.mode-tab')[0].classList.add('active');
+    document.getElementById('flashcardMode').classList.remove('hidden');
+    document.getElementById('quizMode').classList.add('hidden');
+  } else {
+    document.querySelectorAll('.mode-tab')[1].classList.add('active');
+    document.getElementById('flashcardMode').classList.add('hidden');
+    document.getElementById('quizMode').classList.remove('hidden');
+    // Reset to start screen
+    goBackToStart();
+  }
+}
+
+function renderCategories() {
+  const container = document.getElementById('catButtons');
+  container.innerHTML = '';
+  categories.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn' + (cat === currentCategory ? ' active' : '');
+    const count = cat === "ทั้งหมด" ? allCards.length : allCards.filter(c => c.cat === cat).length;
+    btn.textContent = `${cat} (${count})`;
+    btn.onclick = () => selectCategory(cat);
+    container.appendChild(btn);
+  });
+}
+
+function selectCategory(cat) {
+  currentCategory = cat;
+  if (cat === "ทั้งหมด") {
+    fcCards = [...allCards];
+  } else {
+    fcCards = allCards.filter(c => c.cat === cat);
+  }
+  fcIdx = 0;
+  fcFlipped = false;
+  renderCategories();
+  renderFlashcard();
+}
+
+// ============== FLASHCARD MODE ==============
+function renderFlashcard() {
+  if (fcCards.length === 0) {
+    document.getElementById('fcQuestion').textContent = "ไม่มีการ์ดในหมวดนี้";
+    return;
+  }
+  const card = fcCards[fcIdx];
+  document.getElementById('fcTag').textContent = card.cat;
+  document.getElementById('fcTagBack').textContent = card.cat;
+  document.getElementById('fcNum').textContent = `${fcIdx + 1} / ${fcCards.length}`;
+  document.getElementById('fcNumBack').textContent = `${fcIdx + 1} / ${fcCards.length}`;
+  document.getElementById('fcQuestion').textContent = card.q;
+  document.getElementById('fcAnswer').innerHTML = card.a;
+
+  const fc = document.getElementById('flashcard');
+  fc.classList.remove('flipped');
+  fcFlipped = false;
+  document.getElementById('gradeButtons').classList.remove('show');
+
+  document.getElementById('fcTotal').textContent = fcCards.length;
+  document.getElementById('fcCurrent').textContent = fcIdx + 1;
+  document.getElementById('fcKnown').textContent = known.size;
+  document.getElementById('fcReview').textContent = review.size;
+
+  const progress = ((fcIdx + 1) / fcCards.length) * 100;
+  document.getElementById('fcProgress').style.width = progress + '%';
+}
+
+function flipCard() {
+  const fc = document.getElementById('flashcard');
+  fcFlipped = !fcFlipped;
+  fc.classList.toggle('flipped', fcFlipped);
+  document.getElementById('gradeButtons').classList.toggle('show', fcFlipped);
+}
+
+function nextCard() {
+  if (fcIdx < fcCards.length - 1) {
+    fcIdx++;
+  } else {
+    fcIdx = 0;
+  }
+  renderFlashcard();
+}
+
+function prevCard() {
+  if (fcIdx > 0) {
+    fcIdx--;
+  } else {
+    fcIdx = fcCards.length - 1;
+  }
+  renderFlashcard();
+}
+
+function shuffleCards() {
+  fcCards.sort(() => Math.random() - 0.5);
+  fcIdx = 0;
+  renderFlashcard();
+}
+
+function gradeCard(grade) {
+  const cardId = fcCards[fcIdx].q;
+  known.delete(cardId);
+  review.delete(cardId);
+  if (grade === 'known') known.add(cardId);
+  else if (grade === 'review' || grade === 'unknown') review.add(cardId);
+  nextCard();
+}
+
+// ============== QUIZ MODE ==============
+function startQuiz(count) {
+  // Get cards from current category
+  let pool;
+  if (currentCategory === "ทั้งหมด") {
+    pool = [...allCards];
+  } else {
+    pool = allCards.filter(c => c.cat === currentCategory);
+  }
+
+  // Filter only those with choices defined
+  pool = pool.filter(c => c.choices && c.choices.length > 0);
+
+  // Shuffle
+  pool.sort(() => Math.random() - 0.5);
+
+  // Pick
+  if (count === 'all') {
+    qzCards = pool;
+  } else {
+    qzCards = pool.slice(0, Math.min(count, pool.length));
+  }
+
+  qzIdx = 0;
+  qzCorrect = 0;
+  qzWrong = 0;
+  qzAnswered = false;
+  qzWrongAnswers = [];
+
+  document.getElementById('quizStart').classList.add('hidden');
+  document.getElementById('quizResults').classList.add('hidden');
+  document.getElementById('quizReview').classList.add('hidden');
+  document.getElementById('quizPlay').classList.remove('hidden');
+
+  renderQuestion();
+}
+
+function renderQuestion() {
+  if (qzCards.length === 0) {
+    alert('ไม่มีข้อสอบในหมวดนี้');
+    goBackToStart();
+    return;
+  }
+  const card = qzCards[qzIdx];
+  qzAnswered = false;
+
+  document.getElementById('qzTag').textContent = card.cat;
+  document.getElementById('qzNum').textContent = `${qzIdx + 1}/${qzCards.length}`;
+  document.getElementById('qzNumDisplay').textContent = `${qzIdx + 1} / ${qzCards.length}`;
+  document.getElementById('qzQuestion').innerHTML = card.q;
+
+  // Update stats
+  document.getElementById('qzCorrect').textContent = qzCorrect;
+  document.getElementById('qzWrong').textContent = qzWrong;
+  const total = qzCorrect + qzWrong;
+  const pct = total === 0 ? 0 : Math.round((qzCorrect / total) * 100);
+  document.getElementById('qzPercent').textContent = pct + '%';
+
+  // Progress
+  document.getElementById('qzProgress').style.width = ((qzIdx + 1) / qzCards.length * 100) + '%';
+
+  // Shuffle choices
+  const indices = card.choices.map((_, i) => i);
+  indices.sort(() => Math.random() - 0.5);
+  qzShuffledChoices = indices;
+
+  // Render choices
+  const choicesEl = document.getElementById('qzChoices');
+  choicesEl.innerHTML = '';
+  const letters = ['A', 'B', 'C', 'D'];
+  indices.forEach((origIdx, displayIdx) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice';
+    btn.innerHTML = `<span class="choice-letter">${letters[displayIdx]}</span><span>${card.choices[origIdx]}</span>`;
+    btn.onclick = () => selectAnswer(origIdx, btn);
+    choicesEl.appendChild(btn);
+  });
+
+  // Hide explanation, disable next
+  document.getElementById('qzExplanation').classList.remove('show');
+  const nextBtn = document.getElementById('qzNextBtn');
+  nextBtn.disabled = true;
+  nextBtn.style.opacity = '0.5';
+}
+
+function selectAnswer(pickedIdx, btnEl) {
+  if (qzAnswered) return;
+  qzAnswered = true;
+
+  const card = qzCards[qzIdx];
+  const correctIdx = card.correct;
+
+  // Disable all
+  const choices = document.querySelectorAll('.choice');
+  choices.forEach(c => c.classList.add('disabled'));
+
+  // Mark correct/wrong
+  choices.forEach((c, displayIdx) => {
+    const origIdx = qzShuffledChoices[displayIdx];
+    if (origIdx === correctIdx) {
+      c.classList.add('correct');
+    } else if (c === btnEl) {
+      c.classList.add('wrong');
+    }
+  });
+
+  if (pickedIdx === correctIdx) {
+    qzCorrect++;
+  } else {
+    qzWrong++;
+    qzWrongAnswers.push({card, picked: pickedIdx});
+  }
+
+  // Show explanation
+  document.getElementById('qzExplanation').innerHTML = `<strong>💡 คำอธิบาย:</strong> ${card.explanation}`;
+  document.getElementById('qzExplanation').classList.add('show');
+
+  // Enable next
+  const nextBtn = document.getElementById('qzNextBtn');
+  nextBtn.disabled = false;
+  nextBtn.style.opacity = '1';
+
+  // Update score display
+  document.getElementById('qzCorrect').textContent = qzCorrect;
+  document.getElementById('qzWrong').textContent = qzWrong;
+  const total = qzCorrect + qzWrong;
+  const pct = total === 0 ? 0 : Math.round((qzCorrect / total) * 100);
+  document.getElementById('qzPercent').textContent = pct + '%';
+}
+
+function nextQuestion() {
+  if (qzIdx < qzCards.length - 1) {
+    qzIdx++;
+    renderQuestion();
+  } else {
+    showResults();
+  }
+}
+
+function showResults() {
+  document.getElementById('quizPlay').classList.add('hidden');
+  document.getElementById('quizResults').classList.remove('hidden');
+
+  const total = qzCards.length;
+  const pct = Math.round((qzCorrect / total) * 100);
+
+  let emoji, title;
+  if (pct >= 90) { emoji = '🏆'; title = 'ยอดเยี่ยม!'; }
+  else if (pct >= 75) { emoji = '🎉'; title = 'เก่งมาก!'; }
+  else if (pct >= 60) { emoji = '😊'; title = 'ดี ยังพัฒนาได้!'; }
+  else if (pct >= 40) { emoji = '💪'; title = 'ต้องอ่านเพิ่ม!'; }
+  else { emoji = '📚'; title = 'ทบทวนเยอะๆ นะ!'; }
+
+  document.getElementById('resEmoji').textContent = emoji;
+  document.getElementById('resTitle').textContent = title;
+  document.getElementById('resScore').textContent = pct + '%';
+  document.getElementById('resDetail').textContent = `${qzCorrect} ถูก จากทั้งหมด ${total} ข้อ`;
+
+  // Category breakdown
+  const catStats = {};
+  qzCards.forEach((c, i) => {
+    if (!catStats[c.cat]) catStats[c.cat] = {total: 0, correct: 0};
+    catStats[c.cat].total++;
+  });
+  // Recount correct by checking wrong list
+  const wrongQuestions = new Set(qzWrongAnswers.map(w => w.card.q));
+  qzCards.forEach(c => {
+    if (!wrongQuestions.has(c.q)) {
+      catStats[c.cat].correct = (catStats[c.cat].correct || 0) + 1;
+    }
+  });
+
+  const catEl = document.getElementById('resCategories');
+  catEl.innerHTML = '<div style="font-weight:600; margin-bottom:8px; color:#333;">📊 แยกตามหมวด</div>';
+  Object.entries(catStats).forEach(([cat, stat]) => {
+    const correct = stat.correct || 0;
+    const catPct = Math.round((correct / stat.total) * 100);
+    const row = document.createElement('div');
+    row.className = 'results-cat-row';
+    row.innerHTML = `
+      <span><strong>${cat}</strong></span>
+      <span style="display:flex; align-items:center; gap:8px;">
+        <span>${correct}/${stat.total} (${catPct}%)</span>
+        <div class="results-cat-bar"><div class="results-cat-fill" style="width:${catPct}%"></div></div>
+      </span>`;
+    catEl.appendChild(row);
+  });
+}
+
+function goBackToStart() {
+  document.getElementById('quizPlay').classList.add('hidden');
+  document.getElementById('quizResults').classList.add('hidden');
+  document.getElementById('quizReview').classList.add('hidden');
+  document.getElementById('quizStart').classList.remove('hidden');
+}
+
+function quitQuiz() {
+  if (confirm('แน่ใจหรือไม่ว่าต้องการออกจาก Quiz?')) {
+    goBackToStart();
+  }
+}
+
+function reviewWrongAnswers() {
+  if (qzWrongAnswers.length === 0) {
+    alert('ไม่มีข้อผิดให้ดูครับ! 🎉');
+    return;
+  }
+
+  document.getElementById('quizResults').classList.add('hidden');
+  document.getElementById('quizReview').classList.remove('hidden');
+
+  const content = document.getElementById('reviewContent');
+  content.innerHTML = '';
+
+  qzWrongAnswers.forEach((item, i) => {
+    const card = item.card;
+    const div = document.createElement('div');
+    div.style.cssText = 'margin-bottom:20px; padding:14px; background:#f9fafb; border-radius:10px; border-left:4px solid #ef4444;';
+    div.innerHTML = `
+      <div style="font-size:11px; color:#667eea; font-weight:600; margin-bottom:6px;">${card.cat} · ข้อ ${i+1}</div>
+      <div style="font-weight:500; margin-bottom:10px;">${card.q}</div>
+      <div style="font-size:14px; margin-bottom:6px;"><strong style="color:#ef4444;">❌ คุณตอบ:</strong> ${card.choices[item.picked]}</div>
+      <div style="font-size:14px; margin-bottom:8px;"><strong style="color:#10b981;">✅ คำตอบที่ถูก:</strong> ${card.choices[card.correct]}</div>
+      <div style="font-size:13px; color:#555; background:#fef3c7; padding:8px 10px; border-radius:6px;"><strong>💡 อธิบาย:</strong> ${card.explanation}</div>
+    `;
+    content.appendChild(div);
+  });
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (mode === 'flashcard') {
+    if (e.key === 'ArrowLeft') prevCard();
+    else if (e.key === 'ArrowRight') nextCard();
+    else if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      flipCard();
+    }
+  }
+});
+
+// Init
+renderCategories();
+renderFlashcard();
+</script>
+</body>
+</html>
